@@ -5,7 +5,7 @@ library(grid)
 library(stringr)
 library(zoo)
 
-data <- read.csv("covid19dataexport.csv", row.names=1)
+data <- read.csv("ab_cases.csv", row.names=1)
 testing <- read.csv("ab_testing.csv")
 testing$Unknown <- testing[,2] - rowSums(testing[,3:ncol(testing)])
 rolling_window_size <- 15
