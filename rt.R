@@ -1,13 +1,19 @@
 library(tidyr)
 library(dplyr)
+library(forcats)
 library(ggplot2)
 library(grid)
 library(stringr)
 library(zoo)
 
+# Jurisdiction-specific data
 data <- read.csv("ab_cases.csv", row.names=1)
+df <- read.csv("ab_demographics.csv", header=FALSE); 
+age_group2pop <- setNames(df[,2], df[,1])
 testing <- read.csv("ab_testing.csv")
 testing$Unknown <- testing[,2] - rowSums(testing[,3:ncol(testing)])
+
+# SARS-CoV-2 specific settings for Rt calculation
 rolling_window_size <- 15
 viral_shedding_days <- 2:10
 viral_shedding_proportions <- c(0.05,0.2,0.2,0.2,0.15,0.1,0.05,0.03,0.02)
@@ -110,18 +116,28 @@ ddz$ci_high <- ifelse(ddz$shapiro.p > 0.05, ddz$rolling_mean+2*ddz$rolling_sd, d
 # Pick the more optimistic one
 ddz$ci_high <- ifelse(ddz$ci_high > ddz$rolling_mean*(1+1.96/sqrt(rolling_window_size)), ddz$rolling_mean*(1+1.96/sqrt(rolling_window_size)), ddz$ci_high)
 
+# Show the age range incidence levels as a heatmap
+data %>% group_by_at(c(1,4)) %>% tally %>% mutate_if(is.character, str_replace_all, pattern = ' ', replacement = '.') %>% collect() -> age_group_tallies
+# Order by first number in the age group label, or NA for Unknown and 0 for Under 1
+age_group_tallies$order <- as.numeric(sapply(age_group_tallies$Age.group, function(x){o <- str_split(x, "[- +]")[[1]][1]; ifelse(o == "Under", 0, o)}))
+age_group_tallies$Age.group.ordered <- fct_reorder(age_group_tallies$Age.group, age_group_tallies$order)
+
 X11.options(type="dbcairo")
 
 cimax <- max(ddz$ci_high, na.rm=TRUE)
 # Display points beyond the averaging window as hints for future time (and info on very start)
 ddz$Rt_only <- ifelse(is.na(ddz$ci_high) & ddz$n > 0, ddz$Rt, NA)
 
-cip <- ggplot(ddz, aes(x=Date.reported, y=Rt_only, color=Alberta.Health.Services.Zone)) + geom_ribbon(aes(ymin = ci_low, ymax = ci_high, fill=Alberta.Health.Services.Zone), color=NA, alpha=0.2, show.legend = F) + geom_line(aes(y=rolling_mean), size=2) + theme(axis.text.x = element_text(angle=90)) + scale_x_date(date_breaks = "1 month", date_labels =  "%b %Y") + scale_y_continuous(position = "right", limits=c(0,cimax)) + theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank()) + geom_hline(yintercept=1, linetype="dotted", color="black") + labs(color=bquote(R[t])) +theme(axis.title.y=element_blank(), axis.ticks.y=element_blank())+geom_point()
+cip <- ggplot(ddz, aes(x=Date.reported, y=Rt_only, color=Alberta.Health.Services.Zone)) + geom_ribbon(aes(ymin = ci_low, ymax = ci_high, fill=Alberta.Health.Services.Zone), color=NA, alpha=0.2, show.legend = F) + geom_line(aes(y=rolling_mean), size=2) + theme(axis.text.x = element_text(angle=90)) + scale_x_date(date_breaks = "1 month", date_labels =  "%b %Y") + scale_y_continuous(position = "right", limits=c(0,cimax)) + theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank()) + geom_hline(yintercept=1, linetype="dotted", color="black") + labs(color="Virus reprod. number\ninstantaneous estimate\n(1=steady # infections)") +theme(axis.title.y=element_blank(), axis.ticks.y=element_blank())+geom_point()
 gA <- ggplotGrob(cip)
 
-ddz$n <- ifelse(is.na(ddz$n), 0,ddz$n)
-np <- ggplot(ddz, aes(x=Date.reported, y=Alberta.Health.Services.Zone, fill=n))+geom_tile()+theme(panel.background=element_rect(fill="black", colour="black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + theme(axis.text.x = element_text(angle=90)) + scale_x_date(date_breaks = "1 month", date_labels =  "%b %Y") + scale_y_discrete(position = "right") + coord_fixed(ratio=4)+labs(fill="New cases per day")+theme(axis.title.y=element_blank(), axis.ticks.x=element_blank())
+#ddz$n <- ifelse(is.na(ddz$n), 0,ddz$n)
+np <- ggplot(ddz, aes(x=Date.reported, y=Alberta.Health.Services.Zone, fill=n))+geom_tile()+theme(panel.background=element_rect(fill="white", colour="white"), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + theme(axis.text.x = element_text(angle=90)) + scale_x_date(date_breaks = "1 month", date_labels =  "%b %Y") + scale_y_discrete(position = "right") + coord_fixed(ratio=4)+labs(fill="New cases by zone")+theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.ticks.x=element_blank()) + scale_fill_gradient(na.value = 'white', low = "grey25", high="lightslateblue")
 gB <- ggplotGrob(np)
-# Ensures taht the two stacked graphs have the same width for the plot area, (i.e. x-axis dates line up) legend, etc.
-g = rbind(gA, gB, size = "last")
+
+agep <- ggplot(age_group_tallies, aes(x=Date.reported, y=Age.group.ordered, fill=100*age_group_tallies$n/age_group2pop[levels(age_group_tallies$Age.group.ordered)[as.numeric(age_group_tallies$Age.group.ordered)]] ))+geom_tile()+theme(panel.background=element_rect(fill="white", colour="white"), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + scale_y_discrete(position = "right") + coord_fixed(ratio=4)+labs(fill="New cases as % of\npop. in age category")+theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.ticks.x=element_blank(), axis.text.x=element_blank()) + scale_fill_gradient(low = "grey25", high="tomato")
+gC <- ggplotGrob(agep);
+
+# Ensures that the three stacked graphs have the same width for the plot area, (i.e. x-axis dates line up) legend, etc.
+g = rbind(gA, gB, gC, size = "last")
 grid.draw(g)
