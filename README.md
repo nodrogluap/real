@@ -8,3 +8,5 @@ This script generates very similar Rt numbers to the R [EpiEstim](https://cran.r
 This script also greatly simplifies the process of plotting multiple Rt estimates (e.g. different "zones") together for comparison, provides sanity checks (e.g. no days with more cases than tests) and tries to gracefully handle missing dates. Breakdown of cases by age group is also displayed, normalized for the age group demographics provided (Alberta age population structure stats are from [the 2016 census](https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/prof/details/Page.cfm?Lang=E&Geo1=PR&Code1=48&Geo2=&Code2=&Data=Count&SearchText=Alberta&SearchType=Begins&SearchPR=01&B1=All&GeoLevel=PR&GeoCode=48), which is a bit out of date).
 
 Test datasets for graphing are provided based on data scrapped from the [Alberta Government COVID-19 data explorer](https://www.alberta.ca/stats/covid-19-alberta-statistics.htm).
+
+![Alberta zones SARS-CoV-2 data graph](/Alberta_Zones.png)
