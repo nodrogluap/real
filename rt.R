@@ -128,6 +128,10 @@ cimax <- max(ddz$ci_high, na.rm=TRUE)
 # Display points beyond the averaging window as hints for future time (and info on very start)
 ddz$Rt_only <- ifelse(is.na(ddz$ci_high) & ddz$n > 0, ddz$Rt, NA)
 
+# Define the drawing order (last factor levels are drawn last and so are the most visible)
+ddz$Alberta.Health.Services.Zone <- as.factor(ddz$Alberta.Health.Services.Zone) 
+ddz$Alberta.Health.Services.Zone <- ordered(ddz$Alberta.Health.Services.Zone, levels = c("Unknown", "North.Zone", "Central.Zone", "South.Zone", "Edmonton.Zone", "Calgary.Zone"))
+
 cip <- ggplot(ddz, aes(x=Date.reported, y=Rt_only, color=Alberta.Health.Services.Zone)) + geom_ribbon(aes(ymin = ci_low, ymax = ci_high, fill=Alberta.Health.Services.Zone), color=NA, alpha=0.2, show.legend = F) + geom_line(aes(y=rolling_mean), size=2) + theme(axis.text.x = element_text(angle=90)) + scale_x_date(date_breaks = "1 month", date_labels =  "%b %Y") + scale_y_continuous(position = "right", limits=c(0,cimax)) + theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank()) + geom_hline(yintercept=1, linetype="dotted", color="black") + labs(color="Virus reprod. number\ninstantaneous estimate\n(1=steady # infections)") +theme(axis.title.y=element_blank(), axis.ticks.y=element_blank())+geom_point()
 gA <- ggplotGrob(cip)
 
