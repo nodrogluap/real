@@ -131,6 +131,7 @@ ddz$Rt_only <- ifelse(is.na(ddz$ci_high) & ddz$n > 0, ddz$Rt, NA)
 # Define the drawing order (last factor levels are drawn last and so are the most visible)
 ddz$Alberta.Health.Services.Zone <- as.factor(ddz$Alberta.Health.Services.Zone) 
 ddz$Alberta.Health.Services.Zone <- ordered(ddz$Alberta.Health.Services.Zone, levels = c("Unknown", "North.Zone", "Central.Zone", "South.Zone", "Edmonton.Zone", "Calgary.Zone"))
+Rlevel <- levels(ddz$Alberta.Health.Services.Zone)
 Rlabels <- sapply(Rlevel, function(zone){Rts_for_zone <- ddz[ddz$Alberta.Health.Services.Zone == zone, "rolling_mean"]; Rts_for_zone <- Rts_for_zone[!is.na(Rts_for_zone$rolling_mean),]; round(unlist(Rts_for_zone[dim(Rts_for_zone)[1],"rolling_mean"]), digits=2)})
 Rlabels <- paste0(levels(ddz$Alberta.Health.Services.Zone), " (",Rlabels,")")
 
